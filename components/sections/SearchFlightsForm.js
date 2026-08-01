@@ -13,97 +13,180 @@ import {
   setFlightForm,
   defaultFlightFormValue,
 } from "@/reduxStore/features/flightFormSlice";
+
 import FlightPassengerAndClassSelector from "../local-ui/FlightPassengerAndClassSelector";
+
 import {
   isDateObjValid,
   passengerObjectToStr,
   cn,
   airportObjectToStr,
-  objDeepCompare,
   parseFlightSearchParams,
 } from "@/lib/utils";
+
 import validateFlightSearchParams from "@/lib/zodSchemas/flightSearchParams";
 import { addDays, format } from "date-fns";
+
 import swap from "@/public/icons/swap.svg";
 import { ErrorMessage } from "../local-ui/errorMessage";
+
 import { forwardRef, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getCookiesAction, validateSearchStateAction } from "@/lib/actions";
+import { getCookiesAction } from "@/lib/actions";
+
 import Jumper, { jumpTo } from "../local-ui/Jumper";
 import { Skeleton } from "../ui/skeleton";
 import { Loader } from "lucide-react";
+
 import addToSearchHistoryAction from "@/lib/actions/addToSearchHistoryAction";
+
+/*
+  Your Travelpayouts information:
+
+  Partner ID / marker: 687738
+  Kiwi campaign ID: 111
+  Kiwi promo ID for custom links: 3791
+*/
+const TRAVELPAYOUTS_MARKER = "687738.trytraveltrip";
+
+/*
+  Creates the Kiwi search URL.
+
+  Example:
+  https://www.kiwi.com/deep
+    ?from=BUD
+    &to=DEL
+    &departure=2026-08-20
+    &return=2026-08-30
+*/
+function buildKiwiSearchUrl({ from, to, departureDate, returnDate }) {
+  const kiwiUrl = new URL("https://www.kiwi.com/deep");
+
+  kiwiUrl.searchParams.set("from", from);
+  kiwiUrl.searchParams.set("to", to);
+  kiwiUrl.searchParams.set("departure", departureDate);
+
+  if (returnDate) {
+    kiwiUrl.searchParams.set("return", returnDate);
+  }
+
+  return kiwiUrl.toString();
+}
+
+/*
+  Wraps the Kiwi search URL inside your Travelpayouts affiliate URL.
+
+  URLSearchParams automatically URL-encodes custom_url.
+*/
+function buildKiwiAffiliateUrl(searchUrl) {
+  const affiliateUrl = new URL("https://c111.travelpayouts.com/click");
+
+  affiliateUrl.searchParams.set("shmarker", TRAVELPAYOUTS_MARKER);
+
+  affiliateUrl.searchParams.set("promo_id", "3791");
+  affiliateUrl.searchParams.set("source_type", "customlink");
+  affiliateUrl.searchParams.set("type", "click");
+  affiliateUrl.searchParams.set("custom_url", searchUrl);
+
+  return affiliateUrl.toString();
+}
 
 const DatePickerCustomInput = forwardRef(
   ({ loading, open, setOpen, value, onClick, className }, ref) => {
     return loading ? (
       <div className="h-full w-full p-3">
-        <Skeleton className={"mb-2 h-8 w-[130px]"} />
-        <Skeleton className={"h-4 w-[100px]"} />
+        <Skeleton className="mb-2 h-8 w-[130px]" />
+        <Skeleton className="h-4 w-[100px]" />
       </div>
     ) : isDateObjValid(value) ? (
       <div
-        onClick={(e) => {
-          onClick(e);
+        ref={ref}
+        onClick={(event) => {
+          onClick(event);
           setOpen(!open);
         }}
-        className={cn("h-full w-full p-3", className)}
+        className={cn("h-full w-full cursor-pointer p-3", className)}
       >
-        <div className={"text-lg font-bold text-black"}>
+        <div className="text-lg font-bold text-black">
           {format(new Date(value), "dd MMM yy")}
         </div>
-        <div className={"text-sm font-medium text-black"}>
+
+        <div className="text-sm font-medium text-black">
           {format(new Date(value), "EEEE")}
         </div>
       </div>
     ) : (
       <div
-        onClick={(e) => {
-          onClick(e);
+        ref={ref}
+        onClick={(event) => {
+          onClick(event);
           setOpen(!open);
         }}
-        className={cn("h-full w-full p-3", className)}
+        className={cn("h-full w-full cursor-pointer p-3", className)}
       >
-        <div className={"text-lg font-bold text-black"}>DD MMM YY</div>
-        <div className={"text-sm font-medium text-black"}>Weekday</div>
+        <div className="text-lg font-bold text-black">DD MMM YY</div>
+
+        <div className="text-sm font-medium text-black">Weekday</div>
       </div>
     );
   },
 );
+
 DatePickerCustomInput.displayName = "DatePickerCustomInput";
 
 function SearchFlightsForm({ params = {} }) {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const [popperOpened, setPopperOpened] = useState(false);
+
   const flightFormData = useSelector((state) => state.flightForm.value);
+
   const errors = flightFormData?.errors || {};
 
+  const [popperOpened, setPopperOpened] = useState(false);
+
   const [isFormLoading, setIsFormLoading] = useState(false);
+
+  const [isLoadingDateRange, setIsLoadingDateRange] = useState(false);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /*
+    Restore the previous search state from the URL or cookies.
+  */
   useEffect(() => {
-    async function searchState() {
+    async function loadSearchState() {
       setIsFormLoading(true);
-      const p = getSearchStateParams();
+
       if ("query" in params) {
-        const newFormData = { ...defaultFlightFormValue, ...p };
+        const stateFromParams = getSearchStateParams();
+
+        const newFormData = {
+          ...defaultFlightFormValue,
+          ...stateFromParams,
+        };
+
         if (Object.keys(newFormData?.errors || {}).length > 0) {
           dispatch(setFlightForm(newFormData));
         } else {
           dispatch(
             setFlightForm({
               ...defaultFlightFormValue,
-              ...parseFlightSearchParams(p),
+              ...parseFlightSearchParams(stateFromParams),
             }),
           );
         }
+
         setIsFormLoading(false);
         return;
       }
 
-      let searchState = await getSearchStateCookies();
+      const searchState = await getSearchStateCookies();
 
       if (Object.keys(searchState?.errors || {}).length > 0) {
-        dispatch(setFlightForm({ ...defaultFlightFormValue, ...searchState }));
+        dispatch(
+          setFlightForm({
+            ...defaultFlightFormValue,
+            ...searchState,
+          }),
+        );
       } else {
         dispatch(
           setFlightForm({
@@ -112,42 +195,68 @@ function SearchFlightsForm({ params = {} }) {
           }),
         );
       }
+
       setIsFormLoading(false);
     }
-    searchState();
-    setTimeout(() => {
+
+    loadSearchState();
+
+    const timeout = setTimeout(() => {
       jumpTo("flightResult");
     }, 500);
+
+    return () => clearTimeout(timeout);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [isLoadingDateRange, setIsLoadingDateRange] = useState(false);
+  /*
+    Load the available date range used by your current
+    date-picker component.
+  */
   useEffect(() => {
     const controller = new AbortController();
+
     async function getAvailableFlightDateRange() {
       setIsLoadingDateRange(true);
-      const getCachedFlight = sessionStorage.getItem("flightDateRange");
-      if (getCachedFlight) {
-        const { from, to, expireAt } = JSON.parse(getCachedFlight);
+
+      const cachedFlightDateRange = sessionStorage.getItem("flightDateRange");
+
+      if (cachedFlightDateRange) {
+        const { from, to, expireAt } = JSON.parse(cachedFlightDateRange);
+
         if (Date.now() < expireAt) {
-          dispatch(setFlightForm({ availableFlightDateRange: { from, to } }));
+          dispatch(
+            setFlightForm({
+              availableFlightDateRange: {
+                from,
+                to,
+              },
+            }),
+          );
+
           setIsLoadingDateRange(false);
           return;
         }
       }
 
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/flights/available_flight_date_range`,
+        const baseUrl =
+          process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+
+        const response = await fetch(
+          `${baseUrl}/api/flights/available_flight_date_range`,
           {
             method: "GET",
-            next: { revalidate: 60, tags: ["flightDateRange"] },
             signal: controller.signal,
           },
         );
-        const data = await res.json();
-        if (data.success === true) {
-          const { from, to } = data.data;
+
+        const result = await response.json();
+
+        if (result.success === true) {
+          const { from, to } = result.data;
+
           sessionStorage.setItem(
             "flightDateRange",
             JSON.stringify({
@@ -156,182 +265,260 @@ function SearchFlightsForm({ params = {} }) {
               expireAt: Date.now() + 10 * 60 * 1000,
             }),
           );
-          dispatch(setFlightForm({ availableFlightDateRange: { from, to } }));
+
+          dispatch(
+            setFlightForm({
+              availableFlightDateRange: {
+                from,
+                to,
+              },
+            }),
+          );
         }
-      } catch (e) {
-        if (e.name === "AbortError") return;
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Could not load the flight date range:", error);
+        }
+      } finally {
+        setIsLoadingDateRange(false);
       }
-      setIsLoadingDateRange(false);
     }
+
     getAvailableFlightDateRange();
 
     return () => {
       controller.abort();
-      setIsLoadingDateRange(false);
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popperOpened]);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  async function handleSubmit(e) {
-    e.preventDefault();
+  /*
+    The new submit handler:
+
+    1. Validates your current form.
+    2. Reads the IATA airport codes.
+    3. Creates a Kiwi pre-filled search.
+    4. Adds your Travelpayouts affiliate tracking.
+    5. Redirects the user.
+  */
+  async function handleSubmit(event) {
+    event.preventDefault();
     setIsSubmitting(true);
+
     const {
-      success: sFForm,
-      errors: eFForm,
-      data: dFForm,
+      success,
+      errors: validationErrors,
+      data: validatedFormData,
     } = validateFlightForm(flightFormData);
 
-    let searchState = {};
-    if ("query" in params) searchState = getSearchStateParams();
-    else searchState = await getSearchStateCookies();
+    if (success === false) {
+      dispatch(
+        setFlightForm({
+          errors: {
+            ...validationErrors,
+          },
+        }),
+      );
 
-    if (Object.keys(searchState?.errors).length > 0) {
-      dispatch(setFlightForm({ errors: { ...searchState.errors } }));
       setIsSubmitting(false);
       return;
     }
 
-    const {
-      success: sSState,
-      errors: eSState,
-      data: dSState,
-    } = validateFlightForm(parseFlightSearchParams(searchState));
+    const fromCode = flightFormData?.from?.iataCode?.trim();
 
-    if (sFForm === false) {
-      dispatch(setFlightForm({ errors: { ...eFForm } }));
+    const toCode = flightFormData?.to?.iataCode?.trim();
+
+    const departureDate = flightFormData?.desiredDepartureDate;
+
+    const returnDate =
+      flightFormData?.tripType === "round_trip"
+        ? flightFormData?.desiredReturnDate
+        : "";
+
+    if (!fromCode || !toCode) {
+      dispatch(
+        setFlightForm({
+          errors: {
+            from: !fromCode ? "Please select a departure airport." : undefined,
+            to: !toCode ? "Please select a destination airport." : undefined,
+          },
+        }),
+      );
+
       setIsSubmitting(false);
       return;
     }
 
-    const sessionTimeout = localStorage.getItem("sessionTimeoutAt") || 0;
-    const currTime = Date.now();
+    if (!departureDate) {
+      dispatch(
+        setFlightForm({
+          errors: {
+            desiredDepartureDate: "Please select a departure date.",
+          },
+        }),
+      );
 
-    const areTheySame = objDeepCompare(dFForm, dSState);
-    const isTimeouted = +currTime > +sessionTimeout;
-    const shouldPreventFromSubmitting =
-      areTheySame === true && !isTimeouted && "query" in params;
-
-    if (shouldPreventFromSubmitting) {
-      jumpTo("flightResult");
-      const newSessionTimeoutAt = Date.now() + 1200 * 1000;
-      localStorage.setItem("sessionTimeoutAt", newSessionTimeoutAt);
-      const event = new CustomEvent("customStorage", {
-        detail: {
-          key: "sessionTimeoutAt",
-          newValue: newSessionTimeoutAt,
-          oldValue: sessionTimeout,
-        },
-      });
-      window.dispatchEvent(event);
       setIsSubmitting(false);
       return;
     }
 
-    const formData = new FormData();
-    Object.entries(dFForm).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-    const res = await validateSearchStateAction(undefined, formData);
-    if (res.success === false) {
-      dispatch(setFlightForm({ errors: { ...res.errors } }));
-      setIsSubmitting(false);
-      return;
-    }
-    if (res.success === true) {
-      localStorage.setItem("sessionTimeoutAt", res.data.sessionTimeoutAt);
-      const event = new CustomEvent("customStorage", {
-        detail: {
-          key: "sessionTimeoutAt",
-          newValue: res.data.sessionTimeoutAt,
-          oldValue: sessionTimeout,
-        },
-      });
+    try {
+      /*
+        Save the search using your existing action.
+        Failure here should not prevent the redirect.
+      */
+      try {
+        await addToSearchHistoryAction("flight", validatedFormData);
+      } catch (historyError) {
+        console.error("Could not save flight search history:", historyError);
+      }
 
-      await addToSearchHistoryAction("flight", dFForm);
-
-      // clear passengersDetails if it exists for previous search
       sessionStorage.removeItem("passengersDetails");
 
-      window.dispatchEvent(event);
-      dispatch(setFlightForm({ errors: {} }));
-      const searchParams = new URLSearchParams(res.data.latestSearchState);
-      router.push(
-        "/flights/search/" + encodeURIComponent(searchParams.toString()),
-        {
-          scroll: false,
-        },
+      dispatch(
+        setFlightForm({
+          errors: {},
+        }),
       );
-      jumpTo("flightResult");
+
+      const kiwiSearchUrl = buildKiwiSearchUrl({
+        from: fromCode.toUpperCase(),
+        to: toCode.toUpperCase(),
+        departureDate,
+        returnDate,
+      });
+
+      const affiliateUrl = buildKiwiAffiliateUrl(kiwiSearchUrl);
+
+      /*
+        Open in the same tab.
+
+        Change this to window.open(...) if you prefer
+        Kiwi to open in a new tab.
+      */
+      window.location.assign(affiliateUrl);
+    } catch (error) {
+      console.error("Could not redirect to Kiwi:", error);
+
+      dispatch(
+        setFlightForm({
+          errors: {
+            submit: "The flight search could not be opened. Please try again.",
+          },
+        }),
+      );
+
+      setIsSubmitting(false);
     }
   }
 
   async function getSearchStateCookies() {
-    const state =
-      (await getCookiesAction(["flightSearchState"]))[0]?.value || "{}";
-    const validate = validateFlightSearchParams(JSON.parse(state));
+    try {
+      const state =
+        (await getCookiesAction(["flightSearchState"]))[0]?.value || "{}";
 
-    const data = validate?.data || {};
-    const errors = validate?.errors || {};
-    let flightFormData = {
-      ...data,
-      errors,
-    };
-    return state === "{}" ? { errors: {} } : flightFormData;
+      if (state === "{}") {
+        return {
+          errors: {},
+        };
+      }
+
+      const parsedState = JSON.parse(state);
+
+      const validation = validateFlightSearchParams(parsedState);
+
+      return {
+        ...(validation?.data || {}),
+        errors: validation?.errors || {},
+      };
+    } catch (error) {
+      return {
+        errors: {},
+      };
+    }
   }
+
   function getSearchStateParams() {
-    const p = new URLSearchParams(decodeURIComponent(params?.query));
-    const objP = Object.fromEntries(p);
-    const validateFlightForm = validateFlightSearchParams(objP);
+    try {
+      const searchParams = new URLSearchParams(
+        decodeURIComponent(params?.query || ""),
+      );
 
-    const data = validateFlightForm?.data || {};
-    const errors = validateFlightForm?.errors || {};
-    let flightFormData = {
-      ...data,
-      errors,
-    };
-    return flightFormData;
+      const paramsObject = Object.fromEntries(searchParams);
+
+      const validation = validateFlightSearchParams(paramsObject);
+
+      return {
+        ...(validation?.data || {}),
+        errors: validation?.errors || {},
+      };
+    } catch (error) {
+      return {
+        errors: {},
+      };
+    }
   }
 
-  function validateFlightForm(flightFormDataObj) {
+  function validateFlightForm(formData) {
     const necessaryData = {
-      from: airportObjectToStr(flightFormDataObj.from),
-      to: airportObjectToStr(flightFormDataObj.to),
-      tripType: flightFormDataObj.tripType,
-      desiredDepartureDate: flightFormDataObj.desiredDepartureDate,
-      desiredReturnDate: flightFormDataObj.desiredReturnDate,
-      class: flightFormDataObj.class,
-      passengers: passengerObjectToStr(flightFormDataObj.passengers),
+      from: airportObjectToStr(formData.from),
+
+      to: airportObjectToStr(formData.to),
+
+      tripType: formData.tripType,
+
+      desiredDepartureDate: formData.desiredDepartureDate,
+
+      desiredReturnDate: formData.desiredReturnDate,
+
+      class: formData.class,
+
+      passengers: passengerObjectToStr(formData.passengers),
     };
 
-    const { success, errors, data } = validateFlightSearchParams(necessaryData);
-    return { success, errors, data };
+    const validation = validateFlightSearchParams(necessaryData);
+
+    return {
+      success: validation.success,
+      errors: validation.errors || {},
+      data: validation.data || {},
+    };
   }
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
 
   return (
     <>
-      <Jumper id={"flightFormJump"} />
-      <form id="flightform" method={"get"} onSubmit={handleSubmit} className="text-black">
+      <Jumper id="flightFormJump" />
+
+      <form
+        id="flightform"
+        method="get"
+        onSubmit={handleSubmit}
+        className="text-black"
+      >
         <div className="my-2 grid grid-cols-4 gap-1 xl:grid-cols-5">
-          <div className={"col-span-full"}>
+          <div className="col-span-full">
             {Object.keys(errors).length > 0 && (
               <ErrorMessage
                 message={
                   <ol>
-                    {Object.entries(errors).map((err) => {
-                      return (
-                        <li key={err[0]}>
-                          <span className="font-bold">{err[0]}</span>: {err[1]}
+                    {Object.entries(errors)
+                      .filter(([, message]) => Boolean(message))
+                      .map(([field, message]) => (
+                        <li key={field}>
+                          <span className="font-bold">{field}</span>: {message}
                         </li>
-                      );
-                    })}
+                      ))}
                   </ol>
                 }
-                className={"text-xs"}
+                className="text-xs"
               />
             )}
           </div>
-          <div className={"col-span-full mb-2 ml-2 flex flex-col gap-2"}>
+
+          <div className="col-span-full mb-2 ml-2 flex flex-col gap-2">
             <span
               className={cn(
                 "font-bold text-black",
@@ -340,21 +527,23 @@ function SearchFlightsForm({ params = {} }) {
             >
               Trip Type
             </span>
+
             {isFormLoading ? (
-              <Skeleton className={"h-4 w-[80%]"} />
+              <Skeleton className="h-4 w-[80%]" />
             ) : (
               <TripTypeRadioGroup
                 defaultValue={flightFormData.tripType}
                 getValue={(value) => {
                   if (value === "round_trip") {
+                    const departure = flightFormData.desiredDepartureDate
+                      ? new Date(flightFormData.desiredDepartureDate)
+                      : new Date();
+
                     dispatch(
                       setFlightForm({
                         ...flightFormData,
                         tripType: value,
-                        desiredReturnDate: addDays(
-                          new Date(flightFormData.desiredDepartureDate),
-                          1,
-                        ).toISOString(),
+                        desiredReturnDate: addDays(departure, 1).toISOString(),
                       }),
                     );
                   } else {
@@ -370,6 +559,7 @@ function SearchFlightsForm({ params = {} }) {
               />
             )}
           </div>
+
           <div
             className={cn(
               "relative col-span-full flex h-auto flex-col gap-2 rounded-[8px] border-2 border-primary md:flex-row lg:col-span-2",
@@ -379,11 +569,12 @@ function SearchFlightsForm({ params = {} }) {
             <InputLabel
               label={
                 <>
-                  From <span className={"text-red-600"}>*</span> - to{" "}
-                  <span className={"text-red-600"}>*</span>
+                  From <span className="text-red-600">*</span> - to{" "}
+                  <span className="text-red-600">*</span>
                 </>
               }
             />
+
             <FlightFromToPopover
               className={cn(
                 "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary px-3 py-2 max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
@@ -391,26 +582,30 @@ function SearchFlightsForm({ params = {} }) {
               )}
               isLoading={isFormLoading}
               fetchInputs={{
-                url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/flights/available_airports`,
+                url: `${baseUrl}/api/flights/available_airports`,
                 method: "GET",
                 searchParamsName: "searchQuery",
-                next: { revalidate: 21600, tags: ["airports"] },
+                next: {
+                  revalidate: 21600,
+                  tags: ["airports"],
+                },
               }}
               excludeVals={[flightFormData.to]}
               defaultSelected={flightFormData.from}
-              getSelected={(obj) =>
+              getSelected={(airport) =>
                 dispatch(
                   setFlightForm({
                     ...flightFormData,
                     from: {
-                      iataCode: obj.iataCode,
-                      name: obj.name,
-                      city: obj.city,
+                      iataCode: airport.iataCode,
+                      name: airport.name,
+                      city: airport.city,
                     },
                   }),
                 )
               }
             />
+
             <button
               onClick={() => {
                 dispatch(
@@ -421,9 +616,8 @@ function SearchFlightsForm({ params = {} }) {
                   }),
                 );
               }}
-              aria-label={"swap airport names"}
-              role={"button"}
-              type={"button"}
+              aria-label="Swap airports"
+              type="button"
               className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary p-2 transition-all hover:border-2 hover:border-primary hover:bg-secondary-foreground"
             >
               <Image
@@ -434,6 +628,7 @@ function SearchFlightsForm({ params = {} }) {
                 src={swap}
               />
             </button>
+
             <FlightFromToPopover
               className={cn(
                 "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary px-3 py-2 max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
@@ -441,27 +636,31 @@ function SearchFlightsForm({ params = {} }) {
               )}
               isLoading={isFormLoading}
               fetchInputs={{
-                url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/flights/available_airports`,
+                url: `${baseUrl}/api/flights/available_airports`,
                 method: "GET",
-                next: { revalidate: 21600, tags: ["airports"] },
+                next: {
+                  revalidate: 21600,
+                  tags: ["airports"],
+                },
                 searchParamsName: "searchQuery",
               }}
               excludeVals={[flightFormData.from]}
               defaultSelected={flightFormData.to}
-              getSelected={(obj) =>
+              getSelected={(airport) =>
                 dispatch(
                   setFlightForm({
                     ...flightFormData,
                     to: {
-                      iataCode: obj.iataCode,
-                      name: obj.name,
-                      city: obj.city,
+                      iataCode: airport.iataCode,
+                      name: airport.name,
+                      city: airport.city,
                     },
                   }),
                 )
               }
             />
           </div>
+
           <div
             className={cn(
               "relative col-span-full flex h-auto flex-col gap-2 rounded-[8px] border-2 border-primary md:flex-row lg:col-span-2",
@@ -472,13 +671,14 @@ function SearchFlightsForm({ params = {} }) {
             <InputLabel
               label={
                 <>
-                  Depart <span className={"text-red-600"}>*</span> - Return{" "}
+                  Depart <span className="text-red-600">*</span> - Return{" "}
                   {flightFormData.tripType === "round_trip" && (
-                    <span className={"text-red-600"}>*</span>
+                    <span className="text-red-600">*</span>
                   )}
                 </>
               }
             />
+
             <div
               className={cn(
                 "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
@@ -493,9 +693,10 @@ function SearchFlightsForm({ params = {} }) {
                 }
                 maxDate={new Date(+flightFormData.availableFlightDateRange.to)}
                 setDate={(date) => {
-                  let d = null;
+                  let formattedDate = null;
+
                   if (isDateObjValid(date)) {
-                    d = date.toLocaleString("en-CA", {
+                    formattedDate = date.toLocaleString("en-CA", {
                       timeZone:
                         Intl.DateTimeFormat().resolvedOptions().timeZone,
                       year: "numeric",
@@ -503,15 +704,11 @@ function SearchFlightsForm({ params = {} }) {
                       day: "2-digit",
                     });
                   }
+
                   dispatch(
                     setFlightForm({
                       ...flightFormData,
-                      desiredDepartureDate: d,
-                      // ...(flightFormData.tripType === "round_trip" &&
-                      //   new Date(date) >
-                      //     new Date(flightFormData.desiredReturnDate) && {
-                      //     desiredReturnDate: date.toISOString(),
-                      //   }),
+                      desiredDepartureDate: formattedDate,
                     }),
                   );
                 }}
@@ -524,6 +721,7 @@ function SearchFlightsForm({ params = {} }) {
                 }
               />
             </div>
+
             <div
               className={cn(
                 "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
@@ -531,7 +729,7 @@ function SearchFlightsForm({ params = {} }) {
               )}
             >
               <DatePicker
-                className={"!h-full !w-full"}
+                className="!h-full !w-full"
                 date={flightFormData.desiredReturnDate}
                 loading={isLoadingDateRange || isFormLoading}
                 required={false}
@@ -544,18 +742,19 @@ function SearchFlightsForm({ params = {} }) {
                 maxDate={new Date(+flightFormData.availableFlightDateRange.to)}
                 setDate={(date) => {
                   if (isDateObjValid(date)) {
-                    const d = date?.toLocaleString("en-CA", {
+                    const formattedDate = date.toLocaleString("en-CA", {
                       timeZone:
                         Intl.DateTimeFormat().resolvedOptions().timeZone,
                       year: "numeric",
                       month: "2-digit",
                       day: "2-digit",
                     });
+
                     dispatch(
                       setFlightForm({
                         ...flightFormData,
-                        // tripType: "round_trip",
-                        desiredReturnDate: d,
+                        tripType: "round_trip",
+                        desiredReturnDate: formattedDate,
                       }),
                     );
                   } else {
@@ -588,11 +787,12 @@ function SearchFlightsForm({ params = {} }) {
             <InputLabel
               label={
                 <>
-                  Passengers <span className={"text-red-600"}>*</span> - Class{" "}
-                  <span className={"text-red-600"}>*</span>
+                  Passengers <span className="text-red-600">*</span> - Class{" "}
+                  <span className="text-red-600">*</span>
                 </>
               }
             />
+
             <FlightPassengerAndClassSelector
               isLoading={isFormLoading}
               flightFormData={flightFormData}
@@ -600,11 +800,12 @@ function SearchFlightsForm({ params = {} }) {
             />
           </div>
         </div>
+
         <div className="flex flex-wrap justify-end gap-3">
           <Button
             disabled={isSubmitting}
             type="submit"
-            className="h-[52px] w-[145px] gap-1"
+            className="h-[52px] w-[145px] gap-1 bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
           >
             {isSubmitting ? (
               <Loader className="animate-spin" />
@@ -613,9 +814,10 @@ function SearchFlightsForm({ params = {} }) {
                 <Image
                   width={24}
                   height={24}
-                  src={"/icons/paper-plane-filled.svg"}
-                  alt={"paper_plane_icon"}
+                  src="/icons/paper-plane-filled.svg"
+                  alt="Paper plane"
                 />
+
                 <span>Show Flights</span>
               </>
             )}
@@ -642,26 +844,25 @@ function InputLabel({ label, className }) {
 function TripTypeRadioGroup({ defaultValue = "one_way", getValue = () => {} }) {
   return (
     <RadioGroup
-      onValueChange={(value) => getValue(value)}
+      onValueChange={getValue}
       className="flex flex-wrap gap-3"
-      defaultValue={defaultValue}
       value={defaultValue}
     >
       <div className="flex items-center space-x-2">
         <RadioGroupItem value="one_way" id="one_way1234" />
+
         <Label htmlFor="one_way1234">One Way</Label>
       </div>
+
       <div className="flex items-center space-x-2">
-        <RadioGroupItem disabled value="round_trip" id="round_trip1234" />
-        <Label
-          className="cursor-not-allowed text-disabled"
-          htmlFor="round_trip1234"
-        >
-          Round Trip
-        </Label>
+        <RadioGroupItem value="round_trip" id="round_trip1234" />
+
+        <Label htmlFor="round_trip1234">Round Trip</Label>
       </div>
+
       <div className="flex items-center space-x-2">
         <RadioGroupItem value="multi_city" id="multi_city1234" disabled />
+
         <Label
           className="cursor-not-allowed text-disabled"
           htmlFor="multi_city1234"

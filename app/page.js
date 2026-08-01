@@ -1,11 +1,17 @@
 import { Nav } from "@/components/sections/Nav";
-import { KiwiFlightSearchWidget } from "@/components/sections/KiwiFlightSearchWidget";
+
+import { SearchFlightsAndStaysFormShortcut } from "@/components/pages/home/sections/SearchFlightsAndStaysFormShortcut";
+
 import { FindFlightAndHotelcards } from "@/components/pages/home/sections/FindFlightAndHotelCards";
+
 import { Reviews } from "@/components/pages/home/sections/Reviews";
+
 import { Footer } from "@/components/sections/Footer";
 
 import { auth } from "@/lib/auth";
+
 import { FlightDestinations } from "@/components/pages/flights/sections/FlightDestinations";
+
 import { PopularHotelDestinations } from "@/components/pages/hotels/sections/PopularHotelDestinations";
 
 export default async function HomePage() {
@@ -20,8 +26,8 @@ export default async function HomePage() {
           session={session}
         />
 
-        <section className="relative flex h-[420px] w-full items-center bg-[#05253f] px-4 pt-16">
-          <div className="w-full pb-24 text-center text-white md:pb-20">
+        <section className="relative flex h-[450px] w-full items-center bg-[#05253f] px-4 pt-16">
+          <div className="w-full pb-28 text-center text-white md:pb-24">
             <h2 className="text-2xl font-bold leading-tight md:text-[2rem] lg:text-[2.5rem]">
               Helping Others
             </h2>
@@ -36,16 +42,16 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Kiwi.com affiliate flight-search widget */}
-        <div className="relative left-1/2 z-20 w-[96%] max-w-[1450px] -translate-x-1/2 -translate-y-[32%] sm:w-[94%] md:-translate-y-[35%] xl:w-[92%]">
-          <KiwiFlightSearchWidget />
-        </div>
+        <SearchFlightsAndStaysFormShortcut className="relative left-1/2 z-20 w-[96%] max-w-[1450px] -translate-x-1/2 -translate-y-[30%] sm:w-[94%] md:-translate-y-[32%] xl:w-[92%]" />
       </header>
 
       <main className="mx-auto mb-10 w-[90%] space-y-10 md:mb-20 md:space-y-20">
         <FlightDestinations />
+
         <PopularHotelDestinations />
+
         <FindFlightAndHotelcards />
+
         <Reviews />
       </main>
 
