@@ -34,7 +34,7 @@ import addToSearchHistoryAction from "@/lib/actions/addToSearchHistoryAction";
 const DatePickerCustomInput = forwardRef(
   ({ loading, open, setOpen, value, onClick, className }, ref) => {
     return loading ? (
-      <div className="h-full w-full p-4">
+      <div className="h-full w-full p-3">
         <Skeleton className={"mb-2 h-8 w-[130px]"} />
         <Skeleton className={"h-4 w-[100px]"} />
       </div>
@@ -44,12 +44,12 @@ const DatePickerCustomInput = forwardRef(
           onClick(e);
           setOpen(!open);
         }}
-        className={cn("h-full w-full p-4", className)}
+        className={cn("h-full w-full p-3", className)}
       >
-        <div className={"text-xl font-bold"}>
+        <div className={"text-lg font-bold text-black"}>
           {format(new Date(value), "dd MMM yy")}
         </div>
-        <div className={"text-md font-medium"}>
+        <div className={"text-sm font-medium text-black"}>
           {format(new Date(value), "EEEE")}
         </div>
       </div>
@@ -59,10 +59,10 @@ const DatePickerCustomInput = forwardRef(
           onClick(e);
           setOpen(!open);
         }}
-        className={cn("h-full w-full p-4", className)}
+        className={cn("h-full w-full p-3", className)}
       >
-        <div className={"text-xl font-bold"}>DD MMM YY</div>
-        <div className={"text-md font-medium"}>Weekday</div>
+        <div className={"text-lg font-bold text-black"}>DD MMM YY</div>
+        <div className={"text-sm font-medium text-black"}>Weekday</div>
       </div>
     );
   },
@@ -280,7 +280,7 @@ function SearchStaysForm({ params = {} }) {
   }
 
   return (
-    <form id="stayForm" method={"get"} onSubmit={handleSubmit}>
+    <form id="stayForm" method={"get"} onSubmit={handleSubmit} className="text-black">
       <div className={"col-span-full"}>
         {Object.keys(errors).length > 0 && (
           <ErrorMessage
@@ -300,19 +300,19 @@ function SearchStaysForm({ params = {} }) {
           />
         )}
       </div>
-      <div className="my-[20px] grid grid-cols-4 gap-4">
+      <div className="my-3 grid grid-cols-4 gap-3">
         <div
           className={cn(
-            "relative col-span-full flex h-auto min-h-[100px] flex-col gap-2 rounded-[8px] border-2 border-primary md:flex-row lg:col-span-1",
+            "relative col-span-full flex h-auto min-h-[86px] flex-col gap-2 rounded-[8px] border-2 border-primary md:flex-row lg:col-span-1",
             (errors?.city || errors?.country) && "border-destructive",
           )}
         >
-          <span className="absolute -top-[8px] left-[16px] z-10 inline-block bg-white px-[4px] leading-none">
+          <span className="absolute -top-[8px] left-[16px] z-10 inline-block bg-white px-[4px] text-sm font-medium leading-none text-black">
             Enter Destination <span className={"text-red-600"}>*</span>
           </span>
           <HotelDestinationPopover
             isLoading={isFormLoading}
-            className={"h-full w-full rounded-[8px] border-0 py-4 pl-4"}
+            className={"h-full w-full rounded-[8px] border-0 py-3 pl-3"}
             fetchInputs={{
               url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/hotels/available_places`,
               searchParamsName: "searchQuery",
@@ -354,7 +354,7 @@ function SearchStaysForm({ params = {} }) {
           />
           <div
             className={cn(
-              "h-auto max-h-[100px] min-h-[100px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
+              "h-auto max-h-[86px] min-h-[86px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
               errors?.checkIn && "border-destructive",
             )}
           >
@@ -388,7 +388,7 @@ function SearchStaysForm({ params = {} }) {
           </div>
           <div
             className={cn(
-              "h-auto max-h-[100px] min-h-[100px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
+              "h-auto max-h-[86px] min-h-[86px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
               errors?.checkOut && "border-destructive",
             )}
           >
@@ -447,7 +447,7 @@ function SearchStaysForm({ params = {} }) {
             >
               <PopoverTrigger
                 asChild
-                className="max-h-[100px] min-h-[100px] w-full justify-start rounded-lg p-4"
+                className="max-h-[86px] min-h-[86px] w-full justify-start rounded-lg p-3"
               >
                 <div>
                   {isFormLoading ? (
@@ -457,12 +457,12 @@ function SearchStaysForm({ params = {} }) {
                     </>
                   ) : (
                     <>
-                      <div className={"text-xl font-bold"}>
+                      <div className={"text-lg font-bold text-black"}>
                         {`${stayFormData.rooms} ${
                           stayFormData.rooms > 1 ? "rooms" : "room"
                         }`}
                       </div>
-                      <div className={"text-md font-medium"}>
+                      <div className={"text-sm font-medium text-black"}>
                         {`${stayFormData.guests} ${
                           stayFormData.guests > 1 ? "guests" : "guest"
                         }`}
@@ -476,7 +476,7 @@ function SearchStaysForm({ params = {} }) {
                   <CardHeader className="mb-4 p-0">
                     <CardTitle>Rooms & Guests</CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-col gap-4 p-0">
+                  <CardContent className="flex flex-col gap-3 p-0">
                     <div
                       className={
                         "flex flex-wrap items-center justify-between gap-1"
@@ -528,7 +528,7 @@ function SearchStaysForm({ params = {} }) {
           </div>
         </div>
       </div>
-      <div className="flex justify-end gap-[24px]">
+      <div className="flex justify-end gap-3">
         <Button
           type="submit"
           disabled={isFormLoading || isSending}
@@ -556,7 +556,7 @@ function InputLabel({ label, className }) {
   return (
     <span
       className={cn(
-        "absolute -top-[10px] left-[10px] z-10 inline-block rounded-md bg-white px-[4px] text-sm font-medium leading-none",
+        "absolute -top-[10px] left-[10px] z-10 inline-block rounded-md bg-white px-[4px] text-sm font-medium leading-none text-black",
         className,
       )}
     >

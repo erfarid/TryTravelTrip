@@ -3,7 +3,7 @@ import { QuickLinks } from "@/components/sections/QuickLinks";
 
 export function Footer() {
   return (
-    <footer className="bg-primary py-12">
+    <footer className="bg-[#e0f2fe] py-12">
       <QuickLinks />
     </footer>
   );

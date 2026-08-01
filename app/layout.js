@@ -1,4 +1,4 @@
-import { Montserrat } from "next/font/google";
+import { Outfit } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -14,10 +14,11 @@ import SetNecessaryCookies from "./SetNecessaryCookies";
 import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 
-const monse = Montserrat({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-monserrat",
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-outfit",
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 const tradegothic = localFont({
@@ -99,14 +100,13 @@ export default async function RootLayout({ children }) {
     enabled: false,
   };
 
-  const alloweRoutesWhileMaintenance =
-    maintenanceMode?.allowlistedRoutes ?? [];
+  const alloweRoutesWhileMaintenance = maintenanceMode?.allowlistedRoutes ?? [];
 
   const currentPathname = headers().get("x-pathname");
 
   return (
-    <html lang="en" className={`${tradegothic.variable} ${monse.variable}`}>
-      <body className={monse.className}>
+    <html lang="en" className={`${tradegothic.variable} ${outfit.variable}`}>
+      <body className={outfit.className}>
         {maintenanceMode.enabled === true &&
         !alloweRoutesWhileMaintenance.some(
           (path) =>
@@ -129,7 +129,7 @@ export default async function RootLayout({ children }) {
           </StoreProvider>
         )}
 
-        <NextTopLoader showSpinner={false} color="hsl(159, 44%, 69%)" />
+        <NextTopLoader showSpinner={false} color="hsl(221, 83%, 53%)" />
         <Toaster richColors closeButton expand position="top-right" />
         <SetNecessaryCookies />
         <Analytics />

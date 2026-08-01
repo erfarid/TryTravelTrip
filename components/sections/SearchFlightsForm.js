@@ -37,7 +37,7 @@ import addToSearchHistoryAction from "@/lib/actions/addToSearchHistoryAction";
 const DatePickerCustomInput = forwardRef(
   ({ loading, open, setOpen, value, onClick, className }, ref) => {
     return loading ? (
-      <div className="h-full w-full p-4">
+      <div className="h-full w-full p-3">
         <Skeleton className={"mb-2 h-8 w-[130px]"} />
         <Skeleton className={"h-4 w-[100px]"} />
       </div>
@@ -47,12 +47,12 @@ const DatePickerCustomInput = forwardRef(
           onClick(e);
           setOpen(!open);
         }}
-        className={cn("h-full w-full p-4", className)}
+        className={cn("h-full w-full p-3", className)}
       >
-        <div className={"text-xl font-bold"}>
+        <div className={"text-lg font-bold text-black"}>
           {format(new Date(value), "dd MMM yy")}
         </div>
-        <div className={"text-md font-medium"}>
+        <div className={"text-sm font-medium text-black"}>
           {format(new Date(value), "EEEE")}
         </div>
       </div>
@@ -62,10 +62,10 @@ const DatePickerCustomInput = forwardRef(
           onClick(e);
           setOpen(!open);
         }}
-        className={cn("h-full w-full p-4", className)}
+        className={cn("h-full w-full p-3", className)}
       >
-        <div className={"text-xl font-bold"}>DD MMM YY</div>
-        <div className={"text-md font-medium"}>Weekday</div>
+        <div className={"text-lg font-bold text-black"}>DD MMM YY</div>
+        <div className={"text-sm font-medium text-black"}>Weekday</div>
       </div>
     );
   },
@@ -311,8 +311,8 @@ function SearchFlightsForm({ params = {} }) {
   return (
     <>
       <Jumper id={"flightFormJump"} />
-      <form id="flightform" method={"get"} onSubmit={handleSubmit}>
-        <div className="my-[20px] grid grid-cols-4 gap-4 xl:grid-cols-5">
+      <form id="flightform" method={"get"} onSubmit={handleSubmit} className="text-black">
+        <div className="my-2 grid grid-cols-4 gap-1 xl:grid-cols-5">
           <div className={"col-span-full"}>
             {Object.keys(errors).length > 0 && (
               <ErrorMessage
@@ -334,7 +334,7 @@ function SearchFlightsForm({ params = {} }) {
           <div className={"col-span-full mb-2 ml-2 flex flex-col gap-2"}>
             <span
               className={cn(
-                "font-bold",
+                "font-bold text-black",
                 errors?.tripType && "text-destructive",
               )}
             >
@@ -386,7 +386,7 @@ function SearchFlightsForm({ params = {} }) {
             />
             <FlightFromToPopover
               className={cn(
-                "h-auto max-h-[100px] min-h-[100px] max-w-full grow rounded-none border-0 border-primary p-4 max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
+                "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary px-3 py-2 max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
                 errors?.from && "border-destructive",
               )}
               isLoading={isFormLoading}
@@ -424,7 +424,7 @@ function SearchFlightsForm({ params = {} }) {
               aria-label={"swap airport names"}
               role={"button"}
               type={"button"}
-              className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary p-2 transition-all hover:border-2 hover:border-primary hover:bg-secondary-foreground"
+              className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary p-2 transition-all hover:border-2 hover:border-primary hover:bg-secondary-foreground"
             >
               <Image
                 alt=""
@@ -436,7 +436,7 @@ function SearchFlightsForm({ params = {} }) {
             </button>
             <FlightFromToPopover
               className={cn(
-                "h-auto max-h-[100px] min-h-[100px] max-w-full grow rounded-none border-0 border-primary p-4 max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
+                "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary px-3 py-2 max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
                 errors?.to && "border-destructive",
               )}
               isLoading={isFormLoading}
@@ -481,7 +481,7 @@ function SearchFlightsForm({ params = {} }) {
             />
             <div
               className={cn(
-                "h-auto max-h-[100px] min-h-[100px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
+                "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-b-2 md:my-1 md:w-1/2 md:border-r-2",
                 errors?.desiredDepartureDate && "border-destructive",
               )}
             >
@@ -526,7 +526,7 @@ function SearchFlightsForm({ params = {} }) {
             </div>
             <div
               className={cn(
-                "h-auto max-h-[100px] min-h-[100px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
+                "h-auto max-h-[72px] min-h-[72px] max-w-full grow rounded-none border-0 border-primary max-md:mx-1 max-md:border-t-2 md:my-1 md:w-1/2 md:border-l-2",
                 errors?.desiredReturnDate && "border-destructive",
               )}
             >
@@ -600,11 +600,11 @@ function SearchFlightsForm({ params = {} }) {
             />
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-[24px]">
+        <div className="flex flex-wrap justify-end gap-3">
           <Button
             disabled={isSubmitting}
             type="submit"
-            className="w-[150px] gap-1"
+            className="h-[52px] w-[145px] gap-1"
           >
             {isSubmitting ? (
               <Loader className="animate-spin" />
@@ -630,7 +630,7 @@ function InputLabel({ label, className }) {
   return (
     <span
       className={cn(
-        "absolute -top-[10px] left-[10px] z-10 inline-block rounded-md bg-white px-[4px] text-sm font-medium leading-none",
+        "absolute -top-[10px] left-[10px] z-10 inline-block rounded-md bg-white px-[4px] text-sm font-medium leading-none text-black",
         className,
       )}
     >
